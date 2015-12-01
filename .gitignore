@@ -1,0 +1,10 @@
+[Bb]ackup*/
+[Dd]ebug*/
+[Rr]elease*/
+ipch/
+*.suo
+*.ncb
+*.sdf
+*.opensdf
+*.user
+UpgradeLog.htm
