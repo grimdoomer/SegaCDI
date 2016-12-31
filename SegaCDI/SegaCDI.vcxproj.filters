@@ -22,48 +22,63 @@
     <Filter Include="Header Files\ISO">
       <UniqueIdentifier>{2ae8472a-9967-4126-8f96-c12dd0209aaa}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\ISO">
+      <UniqueIdentifier>{0ef0ea4d-57e2-4a24-bc0c-364e8e4e518a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Bootstrap.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="CdiImage.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="MRImage.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="SegaCDI.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files\Precompile</Filter>
     </ClCompile>
+    <ClCompile Include="ISO\Iso9660.cpp">
+      <Filter>Source Files\ISO</Filter>
+    </ClCompile>
+    <ClCompile Include="DiskJuggler\CdiFileHandle.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Dreamcast\Bootstrap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Dreamcast\CdiImage.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Dreamcast\MRImage.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Bootstrap.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="CdiImage.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="MRImage.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Utilities.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="stdafx.h">
       <Filter>Header Files\Precompile</Filter>
     </ClInclude>
     <ClInclude Include="targetver.h">
       <Filter>Header Files\Precompile</Filter>
     </ClInclude>
-    <ClInclude Include="Iso9660.h">
+    <ClInclude Include="ISO\Iso9660.h">
       <Filter>Header Files\ISO</Filter>
     </ClInclude>
-    <ClInclude Include="Iso9660Types.h">
+    <ClInclude Include="ISO\Iso9660Types.h">
       <Filter>Header Files\ISO</Filter>
+    </ClInclude>
+    <ClInclude Include="DiskJuggler\CdiFileHandle.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Misc\Utilities.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Misc\FlatMemoryIterator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Dreamcast\Bootstrap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Dreamcast\CdiImage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Dreamcast\MRImage.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

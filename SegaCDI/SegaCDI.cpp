@@ -2,8 +2,8 @@
 //
 
 #include "stdafx.h"
-#include "CdiImage.h"
-#include "Iso9660.h"
+#include "Dreamcast\CdiImage.h"
+#include "ISO/Iso9660.h"
 
 void printUse()
 {
@@ -14,6 +14,7 @@ void printUse()
 	printf("\t<cdi_file>\t\t.cdi image file\n\n");
 
 	printf("\t-v\t\t\tprintf extended info\n");
+	printf("\t-c\t\tconvert to data/data iso\n");
 	printf("\t-o <output_folder>\toutput folder\n");
 	printf("\t-s <session#:track#>\tdump track from session (value is optional)\n");
 
@@ -110,7 +111,7 @@ bool parseDumpInfoArg(LPCSTR sDumpInfo, DWORD *pdwSessionNum, DWORD *pdwTrackNum
 	return true;
 }
 
-bool extractFilesFropImage(CCdiImage *pImage, CString sOutputFolder, CString sDumpParam, bool bVerbos)
+bool extractFilesFropImage(Dreamcast::CdiImage *pImage, CString sOutputFolder, CString sDumpParam, bool bVerbos)
 {
 	// Check the dump param for what we should dump.
 	if (sDumpParam == "a")
@@ -123,7 +124,7 @@ bool extractFilesFropImage(CCdiImage *pImage, CString sOutputFolder, CString sDu
 	if (sDumpParam.Find("i") > -1)
 	{
 		// Dump the bootstrap file.
-		if (pImage->DumpIPBin(sOutputFolder) == false)
+		if (pImage->ExtractIPBin(sOutputFolder) == false)
 			return false;
 	}
 
@@ -131,7 +132,7 @@ bool extractFilesFropImage(CCdiImage *pImage, CString sOutputFolder, CString sDu
 	if (sDumpParam.Find("l") > -1)
 	{
 		// Dump the boot logo.
-		if (pImage->DumpMRImage(sOutputFolder) == false)
+		if (pImage->ExtractMRImage(sOutputFolder) == false)
 			return false;
 	}
 
@@ -141,13 +142,13 @@ bool extractFilesFropImage(CCdiImage *pImage, CString sOutputFolder, CString sDu
 
 int main(int argc, CHAR* argv[])
 {
-	{
-		// ISO 9660 sanity checks.
-		int size = sizeof(ISO9660_DirectoryEntry);
-		size = sizeof(ISO9660_PrimaryVolumeDescriptor);
-		size = sizeof(ISO9660_VolumeDescriptor);
-		return 0;
-	}
+	//{
+	//	// ISO 9660 sanity checks.
+	//	int size = sizeof(ISO9660_DirectoryEntry);
+	//	size = sizeof(ISO9660_PrimaryVolumeDescriptor);
+	//	size = sizeof(ISO9660_VolumeDescriptor);
+	//	return 0;
+	//}
 
 	// Debug case.
 	if (IsDebuggerPresent())
@@ -156,22 +157,23 @@ int main(int argc, CHAR* argv[])
 		{
 			argv[0],
 			//"X:\\Dreamcast\\Games\\Toy Commander\\Toy Commander.cdi"		// Mode2/Mode2
-			"G:\\Dreamcast\\Games\\Crazy Taxi 2\\Crazy Taxi 2.cdi",		// Audio/Mode2
+			//"G:\\Dreamcast\\Games\\Crazy Taxi 2\\Crazy Taxi 2.cdi",		// Audio/Mode2
 			//"X:\\Dreamcast\\Games\\Zombie Revenge\\Zombie Revenge.cdi"		// Mode2/Mode2
 			//"X:\\Dreamcast\\Games\\Soul Calibur\\Soul Calibur\\scalibur\\scalibur.cdi",
-			//"Y:\\DEVELOPMENT\\Dreamcast\\Games\\Quake III Arena\\Quake III Arena.cdi",
+			"Z:\\Dreamcast\\Games\\Quake III Arena\\Quake III Arena.cdi",
 			//"Y:\\DEVELOPMENT\\Dreamcast\\Games\\Zombie Revenge\\Zombie Revenge.cdi",
+			//"G:\\Dreamcast\\Games\\GameShark_CDX\\GameShark CDX\\e-gscdx.cdi",
 
 			"-v",
 			"-o",
-			"G:\\Dreamcast\\Games\\Crazy Taxi 2\\extract4",
+			"Z:\\Dreamcast\\Games\\Quake III Arena\\extract3",
 			//"Y:\\DEVELOPMENT\\Dreamcast\\Games\\Zombie Revenge\\extract",
 
 			"-s",
 			"-e", "a"
 		};
 
-		argc = 3;
+		argc = 8;
 		argv = args;
 	}
 
@@ -193,8 +195,13 @@ int main(int argc, CHAR* argv[])
 			printf("loading image %s\n", sCdiImage);
 
 			// Create a new CdiImage object and parse the image.
-			CCdiImage *pImage = new CCdiImage();
-			pImage->LoadImage(sCdiImage, bVerbos);
+			Dreamcast::CdiImage *pImage = new Dreamcast::CdiImage();
+			if (pImage->LoadImage(sCdiImage, bVerbos) == false)
+			{
+				// Failed to load the CDI image, nothing else to do here.
+				delete pImage;
+				return 0;
+			}
 
 			// Check if we should dump a session/track to an iso file.
 			if (getCmdArg(argc, argv, "-s") == true && bOutput == true)
@@ -217,12 +224,12 @@ int main(int argc, CHAR* argv[])
 					}
 
 					// Dump the second session to an iso file.
-					pImage->DumpTrackToFile(sOutputFolder, dwSessionNum, dwTrackNum);
+					pImage->WriteTrackToFile(sOutputFolder, dwSessionNum, dwTrackNum);
 				}
 				else
 				{
 					// Dump all the tracks in the cdi image file.
-					pImage->DumpAllTracks(sOutputFolder);
+					pImage->WriteAllTracks(sOutputFolder);
 				}
 			}
 
@@ -240,6 +247,12 @@ int main(int argc, CHAR* argv[])
 					delete pImage;
 					return 0;
 				}
+			}
+
+			// Check if we should convert the image to a data/data image.
+			if (getCmdArg(argc, argv, "-c") == true && bOutput == true)
+			{
+
 			}
 
 			// Done.

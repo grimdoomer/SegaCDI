@@ -57,7 +57,7 @@
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
     </ClCompile>
@@ -87,9 +87,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Bootstrap.cpp" />
-    <ClCompile Include="CdiImage.cpp" />
-    <ClCompile Include="MRImage.cpp" />
+    <ClCompile Include="Dreamcast\Bootstrap.cpp" />
+    <ClCompile Include="Dreamcast\CdiImage.cpp" />
+    <ClCompile Include="DiskJuggler\CdiFileHandle.cpp" />
+    <ClCompile Include="ISO\Iso9660.cpp" />
+    <ClCompile Include="Dreamcast\MRImage.cpp" />
     <ClCompile Include="SegaCDI.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -97,14 +99,16 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Bootstrap.h" />
-    <ClInclude Include="CdiImage.h" />
-    <ClInclude Include="Iso9660.h" />
-    <ClInclude Include="Iso9660Types.h" />
-    <ClInclude Include="MRImage.h" />
+    <ClInclude Include="Dreamcast\Bootstrap.h" />
+    <ClInclude Include="Dreamcast\CdiImage.h" />
+    <ClInclude Include="DiskJuggler\CdiFileHandle.h" />
+    <ClInclude Include="ISO\Iso9660.h" />
+    <ClInclude Include="ISO\Iso9660Types.h" />
+    <ClInclude Include="Misc\FlatMemoryIterator.h" />
+    <ClInclude Include="Dreamcast\MRImage.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="Utilities.h" />
+    <ClInclude Include="Misc\Utilities.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />

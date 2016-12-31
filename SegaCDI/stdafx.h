@@ -5,8 +5,6 @@
 
 #pragma once
 
-#include "targetver.h"
-
 #include <stdio.h>
 #include <tchar.h>
 
@@ -15,4 +13,4 @@
 #define _AFXDLL
 #include <afx.h>
 
-#include "Utilities.h"
+#include "Misc/Utilities.h"
