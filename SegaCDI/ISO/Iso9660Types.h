@@ -94,18 +94,18 @@ namespace ISO
 #pragma pack(1)
 	struct ISO9660_DirectoryEntry
 	{
-		char bEntryLength;
-		char bExtendedAttributeLength;
-		LSBMSB_Int32 dwExtentLBA;
-		LSBMSB_Int32 dwExtentSize;
-		ISO_datetime2 dtRecordingDateTime;
-		FileFlags bFileFlags;
-		char bFileUnitSize;
-		char bInterleveGapSize;
-		LSBMSB_Int16 wVolumeSequenceNumber;
-		char bFileIdentifierLength;
-		char sFileIdentifier[1];
-		char bPadding;
+		/* 0x00 */ char bEntryLength;
+		/* 0x01 */ char bExtendedAttributeLength;
+		/* 0x02 */ LSBMSB_Int32 dwExtentLBA;
+		/* 0x0A */ LSBMSB_Int32 dwExtentSize;
+		/* 0x12 */ ISO_datetime2 dtRecordingDateTime;
+		/* 0x19 */ FileFlags bFileFlags;
+		/* 0x1A */ char bFileUnitSize;
+		/* 0x1B */ char bInterleveGapSize;
+		/* 0x1C */ LSBMSB_Int16 wVolumeSequenceNumber;
+		/* 0x20 */ char bFileIdentifierLength;
+		/* 0x21 */ char sFileIdentifier[1];
+		/* 0x00 */ char bPadding;
 	};
 
 	//-----------------------------------------------------

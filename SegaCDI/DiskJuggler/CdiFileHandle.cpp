@@ -14,9 +14,77 @@
 
 namespace DiskJuggler
 {
+	//-----------------------------------------------------
+	// CdiTrackHandle
+	//-----------------------------------------------------
+	DWORD CdiTrackHandle::LBA()
+	{
+		// Just return the lba from the track.
+		return this->pTrack->dwLba;
+	}
+
+	DWORD CdiTrackHandle::TrackSize()
+	{
+		// Compute the raw size of the track.
+		return this->pTrack->dwLength * RAW_SECTOR_SIZE;
+	}
+
+	bool CdiTrackHandle::ReadData(DWORD dwLBA, PBYTE pbBuffer, DWORD dwSize)
+	{
+		// Check to see if the size is a multiple of RAW_SECTOR_SIZE.
+		if (dwSize % RAW_SECTOR_SIZE == 0)
+		{
+			// Delegate the functionality to the underlying CdiFileHandle.
+			return this->pFileHandle->ReadSectors(this->dwSessionNumber, this->dwTrackNumber, dwLBA + this->pTrack->dwLba, pbBuffer, dwSize / RAW_SECTOR_SIZE);
+		}
+		else
+		{
+			// Allocate a scratch buffer to store the data into.
+			DWORD dwReadSize = dwSize + (RAW_SECTOR_SIZE - (dwSize % RAW_SECTOR_SIZE));
+			BYTE *pbScratchBuffer = (PBYTE)VirtualAlloc(NULL, dwReadSize, MEM_COMMIT, PAGE_READWRITE);
+			if (pbScratchBuffer == NULL)
+			{
+				// Print an error and return false.
+				printf("CdiTrackHandle::ReadSectors(): failed to allocate scratch buffer!\n");
+				return false;
+			}
+
+			// Read the data from the track.
+			if (this->pFileHandle->ReadSectors(this->dwSessionNumber, this->dwTrackNumber, dwLBA + this->pTrack->dwLba,
+				pbScratchBuffer, dwReadSize / RAW_SECTOR_SIZE) == false)
+			{
+				// Failed to read the data, return false.
+				VirtualFree(pbScratchBuffer, dwReadSize, MEM_DECOMMIT);
+				return false;
+			}
+
+			// Copy the data to the output buffer.
+			memcpy(pbBuffer, pbScratchBuffer, dwSize);
+
+			// Free the scratch buffer and return true.
+			VirtualFree(pbScratchBuffer, dwReadSize, MEM_DECOMMIT);
+			return true;
+		}
+	}
+
+	bool CdiTrackHandle::WriteData(DWORD dwLBA, PBYTE pbBuffer, DWORD dwSize)
+	{
+		// Delegate the functionality to the underlying CdiFileHandle.
+		return false;
+		//return this->pFileHandle->WriteSectors(this->dwSessionNumber, this->dwTrackNumber, dwLBA + this->pTrack->dwLba, pbBuffer, dwSectorCount);
+	}
+
+	//-----------------------------------------------------
+	// CdiFileHandle
+	//-----------------------------------------------------
 	CdiFileHandle::CdiFileHandle()
 	{
-
+		// Initialize fields.
+		this->m_hFile = INVALID_HANDLE_VALUE;
+		this->m_dwFileSize = 0;
+		this->m_dwCurrentLBA = -1;
+		this->m_wSessionCount = 0;
+		this->m_sSessions = nullptr;
 	}
 
 	CdiFileHandle::~CdiFileHandle()
@@ -132,6 +200,9 @@ namespace DiskJuggler
 		// For now just loop through all of the sessions and parse each one.
 		for (int i = 0; i < this->m_wSessionCount; i++)
 		{
+			// Initialize the session structure.
+			this->m_sSessions[i] = CdiSession();
+
 			// Set the session number.
 			if (bVerbose == true) printf("\nsession %d:\n", i + 1);
 			this->m_sSessions[i].dwSessionNumber = i;
@@ -149,6 +220,9 @@ namespace DiskJuggler
 			// Loop through all the tracks and read them from the descriptor.
 			for (int x = 0; x < this->m_sSessions[i].wTrackCount; x++)
 			{
+				// Initialize the track structure.
+				this->m_sSessions[i].psTracks[x] = CdiTrack();
+
 				// Set the track number.
 				if (bVerbose == true) printf("\n\ttrack %d\n", x + 1);
 				this->m_sSessions[i].psTracks[x].dwTrackNumber = x;
@@ -291,30 +365,43 @@ namespace DiskJuggler
 		if (dwSessionNumber >= this->m_wSessionCount || dwTrackNumber >= this->m_sSessions[dwSessionNumber].wTrackCount)
 			return false;
 
+		// Check to make sure the data to be read wont go beyond the end of the track.
+		if (dwSectorCount > this->m_sSessions[dwSessionNumber].psTracks[dwTrackNumber].dwLength)
+		{
+			// Print an error and return.
+			printf("CdiFileHandle::ReadSectors(): read operation would go beyond the length of the track!\n");
+			return false;
+		}
+
 		// Pull out the track struct for easy access.
 		CdiTrack *pTargetTrack = &this->m_sSessions[dwSessionNumber].psTracks[dwTrackNumber];
 
-		// Seek to the beginning of the file.
-		SetFilePointer(this->m_hFile, 0, NULL, FILE_BEGIN);
-
-		// Loop through all of the sessions until we get to the one we want.
-		for (int i = 0; i <= dwSessionNumber; i++)
+		// Check to see if we are already at the target LBA or if we need to seek.
+		if (dwLBA != this->m_dwCurrentLBA)
 		{
-			// Loop through all of the tracks until we get to the one we want.
-			WORD wTrackCount = (i == dwSessionNumber ? dwTrackNumber : this->m_sSessions[i].wTrackCount);
-			for (int x = 0; x < wTrackCount; x++)
+			// Set the new current LBA.
+			this->m_dwCurrentLBA = dwLBA;
+
+			// Loop through all of the sessions until we get to the one we want.
+			DWORD dwTargetOffset = 0;
+			for (int i = 0; i <= dwSessionNumber; i++)
 			{
-				// Skip over this track.
-				SetFilePointer(this->m_hFile,
-					this->m_sSessions[i].psTracks[x].dwTotalLength * this->m_sSessions[i].psTracks[x].eSectorSize, NULL, FILE_CURRENT);
+				// Loop through all of the tracks until we get to the one we want.
+				WORD wTrackCount = (i == dwSessionNumber ? dwTrackNumber : this->m_sSessions[i].wTrackCount);
+				for (int x = 0; x < wTrackCount; x++)
+				{
+					// Skip over this track.
+					dwTargetOffset += this->m_sSessions[i].psTracks[x].dwTotalLength * this->m_sSessions[i].psTracks[x].eSectorSize;
+				}
 			}
+
+			// Skip the pregap section of the track.
+			dwTargetOffset += pTargetTrack->dwPregapLength * pTargetTrack->eSectorSize;
+
+			// Seek to the target LBA.
+			dwTargetOffset += pTargetTrack->eSectorSize * (dwLBA - pTargetTrack->dwLba);
+			SetFilePointer(this->m_hFile, dwTargetOffset, NULL, FILE_BEGIN);
 		}
-
-		// Skip the pregap section of the track.
-		SetFilePointer(this->m_hFile, pTargetTrack->dwPregapLength * pTargetTrack->eSectorSize, NULL, FILE_CURRENT);
-
-		// Seek to the target LBA.
-		SetFilePointer(this->m_hFile, pTargetTrack->eSectorSize * (dwLBA - pTargetTrack->dwLba), NULL, FILE_CURRENT);
 
 		// We need to know the header size of the track in order to read data from it.
 		DWORD dwHeaderSize = 0;
@@ -363,6 +450,9 @@ namespace DiskJuggler
 				// Copy the real sector to the output buffer.
 				memcpy(&pbBuffer[i * RAW_SECTOR_SIZE], &pbTempBuffer[dwHeaderSize], RAW_SECTOR_SIZE);
 			}
+
+			// Increment the current LBA.
+			this->m_dwCurrentLBA++;
 		}
 
 		// Free the temporary working buffer.
@@ -380,30 +470,43 @@ namespace DiskJuggler
 		if (dwSessionNumber >= this->m_wSessionCount || dwTrackNumber >= this->m_sSessions[dwSessionNumber].wTrackCount)
 			return false;
 
+		// Check to make sure the data to be written wont go beyond the end of the track.
+		if (dwSectorCount > this->m_sSessions[dwSessionNumber].psTracks[dwTrackNumber].dwLength)
+		{
+			// Print an error and return.
+			printf("CdiFileHandle::WriteSectors(): write operation would go beyond the length of the track!\n");
+			return false;
+		}
+
 		// Pull out the track struct for easy access.
 		CdiTrack *pTargetTrack = &this->m_sSessions[dwSessionNumber].psTracks[dwTrackNumber];
 
-		// Seek to the beginning of the file.
-		SetFilePointer(this->m_hFile, 0, NULL, FILE_BEGIN);
-
-		// Loop through all of the sessions until we get to the one we want.
-		for (int i = 0; i <= dwSessionNumber; i++)
+		// Check to see if we are already at the target LBA or if we need to seek.
+		if (dwLBA != this->m_dwCurrentLBA)
 		{
-			// Loop through all of the tracks until we get to the one we want.
-			WORD wTrackCount = (i == dwSessionNumber ? dwTrackNumber : this->m_sSessions[i].wTrackCount);
-			for (int x = 0; x < wTrackCount; x++)
+			// Set the new current LBA.
+			this->m_dwCurrentLBA = dwLBA;
+
+			// Loop through all of the sessions until we get to the one we want.
+			DWORD dwTargetOffset = 0;
+			for (int i = 0; i <= dwSessionNumber; i++)
 			{
-				// Skip over this track.
-				SetFilePointer(this->m_hFile,
-					this->m_sSessions[i].psTracks[x].dwTotalLength * this->m_sSessions[i].psTracks[x].eSectorSize, NULL, FILE_CURRENT);
+				// Loop through all of the tracks until we get to the one we want.
+				WORD wTrackCount = (i == dwSessionNumber ? dwTrackNumber : this->m_sSessions[i].wTrackCount);
+				for (int x = 0; x < wTrackCount; x++)
+				{
+					// Skip over this track.
+					dwTargetOffset += this->m_sSessions[i].psTracks[x].dwTotalLength * this->m_sSessions[i].psTracks[x].eSectorSize;
+				}
 			}
+
+			// Skip the pregap section of the track.
+			dwTargetOffset += pTargetTrack->dwPregapLength * pTargetTrack->eSectorSize;
+
+			// Seek to the target LBA.
+			dwTargetOffset += pTargetTrack->eSectorSize * (dwLBA - pTargetTrack->dwLba);
+			SetFilePointer(this->m_hFile, dwTargetOffset, NULL, FILE_BEGIN);
 		}
-
-		// Skip the pregap section of the track.
-		SetFilePointer(this->m_hFile, pTargetTrack->dwPregapLength * pTargetTrack->eSectorSize, NULL, FILE_CURRENT);
-
-		// Seek to the target LBA.
-		SetFilePointer(this->m_hFile, pTargetTrack->eSectorSize * (dwLBA - pTargetTrack->dwLba), NULL, FILE_CURRENT);
 
 		// We need to know the header size of the track in order to write data to it.
 		DWORD dwHeaderSize = 0;
@@ -444,6 +547,9 @@ namespace DiskJuggler
 					dwLBA, i, pTargetTrack->eSectorSize);
 				return false;
 			}
+
+			// Increment the current LBA.
+			this->m_dwCurrentLBA++;
 		}
 
 		// Done, successfully wrote the sectors to file.
@@ -454,5 +560,40 @@ namespace DiskJuggler
 	{
 		// Return our shadow collection of CdiSession objects.
 		return *this->m_pSessionCollection;
+	}
+
+	CdiTrackHandle *CdiFileHandle::OpenTrackHandle(DWORD dwSessionNumber, DWORD dwTrackNumber)
+	{
+		// Check that the session number is valid.
+		if (dwSessionNumber < 0 || dwSessionNumber >= this->m_wSessionCount)
+		{
+			// The session number is invalid, print an error and return.
+			printf("CdiFileHandle::OpenTrackHandle(): session number specified is invalid!\n");
+			return nullptr;
+		}
+
+		// Check that the track number is valid.
+		if (dwTrackNumber < 0 || dwTrackNumber >= this->m_sSessions[dwSessionNumber].wTrackCount)
+		{
+			// The track number is invalid, print an error and return.
+			printf("CdiFileHandle::OpenTrackHandle(): track number specified is invalid!\n");
+			return nullptr;
+		}
+
+		// Create a new track handle and initialize it to the track specified.
+		CdiTrackHandle *pTrackHandle = new CdiTrackHandle();
+		pTrackHandle->dwSessionNumber = dwSessionNumber;
+		pTrackHandle->dwTrackNumber = dwTrackNumber;
+		pTrackHandle->pFileHandle = this;
+		pTrackHandle->pTrack = &this->m_sSessions[dwSessionNumber].psTracks[dwTrackNumber];
+
+		// Return the track handle.
+		return pTrackHandle;
+	}
+
+	void CdiFileHandle::CloseTrackHandle(CdiTrackHandle *pTrackHandle)
+	{
+		// Free the handle allocation.
+		delete pTrackHandle;
 	}
 };

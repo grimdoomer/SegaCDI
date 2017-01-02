@@ -160,20 +160,20 @@ int main(int argc, CHAR* argv[])
 			//"G:\\Dreamcast\\Games\\Crazy Taxi 2\\Crazy Taxi 2.cdi",		// Audio/Mode2
 			//"X:\\Dreamcast\\Games\\Zombie Revenge\\Zombie Revenge.cdi"		// Mode2/Mode2
 			//"X:\\Dreamcast\\Games\\Soul Calibur\\Soul Calibur\\scalibur\\scalibur.cdi",
-			"Z:\\Dreamcast\\Games\\Quake III Arena\\Quake III Arena.cdi",
+			"G:\\Dreamcast\\Games\\Quake III Arena\\Quake III Arena.cdi",
 			//"Y:\\DEVELOPMENT\\Dreamcast\\Games\\Zombie Revenge\\Zombie Revenge.cdi",
 			//"G:\\Dreamcast\\Games\\GameShark_CDX\\GameShark CDX\\e-gscdx.cdi",
 
 			"-v",
 			"-o",
-			"Z:\\Dreamcast\\Games\\Quake III Arena\\extract3",
+			"G:\\Dreamcast\\Games\\Quake III Arena\\extract3",
 			//"Y:\\DEVELOPMENT\\Dreamcast\\Games\\Zombie Revenge\\extract",
 
 			"-s",
 			"-e", "a"
 		};
 
-		argc = 8;
+		argc = 3;
 		argv = args;
 	}
 

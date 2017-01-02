@@ -20,6 +20,10 @@ namespace Dreamcast
 	{
 		// Initialize fields.
 		this->m_pCdiFile = nullptr;
+		this->m_dwFsSessionNumber = -1;
+		this->m_dwFsTrackNumber = -1;
+		this->m_phFsTrackHandle = nullptr;
+		this->m_pFsIsoHandle = nullptr;
 	}
 
 	CdiImage::~CdiImage()
@@ -34,8 +38,7 @@ namespace Dreamcast
 		if (this->m_pCdiFile->Open(sFileName, false, bVerbos) == false)
 		{
 			// Failed to initialize the cdi file handle, close any file handles and return.
-			delete this->m_pCdiFile;
-			return false;
+			goto Cleanup;
 		}
 
 		// Load and parse the bootstrap (ip.bin).
@@ -43,12 +46,42 @@ namespace Dreamcast
 		{
 			// Failed to read the bootstrap sector.
 			printf("CdiImage::LoadImage(): failed to load bootstrap sector!\n");
-			delete this->m_pCdiFile;
-			return false;
+			goto Cleanup;
+		}
+
+		// Initialize the file system track handle using the session and track numbers we found the bootstrap in.
+		this->m_phFsTrackHandle = this->m_pCdiFile->OpenTrackHandle(this->m_dwFsSessionNumber, this->m_dwFsTrackNumber);
+		if (this->m_phFsTrackHandle == nullptr)
+		{
+			// Failed to get a handle on the file system track.
+			printf("CdiImage::LoadImage(): failed to open file system track!\n");
+			goto Cleanup;
+		}
+
+		// Parse the ISO9660 structure and read out the file system.
+		this->m_pFsIsoHandle = new ISO::ISO9660();
+		if (this->m_pFsIsoHandle->LoadISOFromCDI(this->m_phFsTrackHandle, bVerbos) == false)
+		{
+			// Failed to load the ISO file system.
+			goto Cleanup;
 		}
 
 		// Everything loaded okay, return true.
 		return true;
+
+	Cleanup:
+		// Check if we created the ISO fs subsystem.
+		if (this->m_pFsIsoHandle)
+			delete this->m_pFsIsoHandle;
+
+		// Cleanup the CDI image subsystem resources.
+		if (this->m_phFsTrackHandle)
+			this->m_pCdiFile->CloseTrackHandle(this->m_phFsTrackHandle);
+		if (this->m_pCdiFile)
+			delete this->m_pCdiFile;
+
+		// Return false.
+		return false;
 	}
 
 	bool CdiImage::LoadBootstrap(bool bVerbos)
@@ -90,8 +123,10 @@ namespace Dreamcast
 				if (memcmp(pbBootstrapBuffer, HARDWARE_ID, 16) != 0)
 					continue;
 
-				// We found the correct track.
+				// We found the correct track, save the session and track numbers for later.
 				printf("\nfound IP.BIN\n");
+				this->m_dwFsSessionNumber = i;
+				this->m_dwFsTrackNumber = x;
 
 				// Read the remaining sectors from the track.
 				if (this->m_pCdiFile->ReadSectors(i, x, sessionCollection[i]->psTracks[x].dwLba + 1, &pbBootstrapBuffer[2048], BOOTSTRAP_SECTOR_COUNT - 1) == false)

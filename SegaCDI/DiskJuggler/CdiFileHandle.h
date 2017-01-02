@@ -15,6 +15,9 @@
 
 namespace DiskJuggler
 {
+	// Forward declarations.
+	class CdiFileHandle;
+
 	#define RAW_SECTOR_SIZE		2048
 
 	//-----------------------------------------------------
@@ -62,6 +65,82 @@ namespace DiskJuggler
 
 		CdiSectorType eSectorType;		// Type of sector, used to determine the sector size
 		CdiSectorSize eSectorSize;		// Size of a single sector
+
+		CdiTrack() 
+		{
+			// Initialize fields.
+			this->dwTrackNumber = 0;
+			this->bFileNameLength = 0;
+			this->psFileName = nullptr;
+			this->dwPregapLength = 0;
+			this->dwLength = 0;
+			this->eMode = (CdiTrackMode)0;
+			this->dwLba = 0;
+			this->dwTotalLength = 0;
+			this->eSectorType = (CdiSectorType)0;
+			this->eSectorSize = (CdiSectorSize)0;
+		}
+
+		CdiTrack(const CdiTrack& other)
+		{
+			// Initialize fields.
+			this->dwTrackNumber = other.dwTrackNumber;
+			this->bFileNameLength = other.bFileNameLength;
+			this->psFileName = new CHAR[this->bFileNameLength + 1];
+			memcpy(this->psFileName, other.psFileName, this->bFileNameLength);
+			this->dwPregapLength = other.dwPregapLength;
+			this->dwLength = other.dwLength;
+			this->eMode = other.eMode;
+			this->dwLba = other.dwLba;
+			this->dwTotalLength = other.dwTotalLength;
+			this->eSectorType = other.eSectorType;
+			this->eSectorSize = other.eSectorSize;
+		}
+	};
+
+	//-----------------------------------------------------
+	// CdiTrackHandle
+	//-----------------------------------------------------
+	class CdiTrackHandle
+	{
+		friend class CdiFileHandle;
+	private:
+		CdiFileHandle *pFileHandle;		// CDI image file handle this handle is to be used with
+		DWORD dwSessionNumber;			// Session number this handle is located in
+		DWORD dwTrackNumber;			// Track number this handle is located in
+		CdiTrack *pTrack;				// CDI track structure this handle is for
+
+	public:
+		/*
+			Description: Gets the base LBA for this track.
+		*/
+		DWORD LBA();
+
+		DWORD TrackSize();
+
+		/*
+			Description: Reads dwSize number of bytes from the track stream at dwLBA.
+
+			Parameters:
+				dwLBA: LBA to begin reading at, relative to the start of the track.
+				pbBuffer: Buffer to read data into.
+				dwSize: Size of data to be read.
+
+			Returns: True if the data was successfully read from the track, false otherwise.
+		*/
+		bool ReadData(DWORD dwLBA, PBYTE pbBuffer, DWORD dwSize);
+
+		/*
+			Description: Writes dwSize number of bytes to the track stream at dwLBA.
+
+			Parameters:
+				dwLBA: LBA to begin writing at, relative to the start of the track.
+				pbBuffer: Buffer containing the sector data to be written.
+				dwSize: Number of bytes to be written.
+
+			Returns: True if the data was successfully written to the track, false otherwise.
+		*/
+		bool WriteData(DWORD dwLBA, PBYTE pbBuffer, DWORD dwSize);
 	};
 
 	//-----------------------------------------------------
@@ -86,6 +165,25 @@ namespace DiskJuggler
 
 		WORD wTrackCount;				// Number of tracks in this session
 		CdiTrack *psTracks;				// Array of tracks in this session
+
+		CdiSession() 
+		{ 
+			// Initialize fields.
+			this->dwSessionNumber = 0;
+			this->wTrackCount = 0;
+			this->psTracks = nullptr;
+		}
+
+		CdiSession(const CdiSession& other)
+		{
+			// Initialize fields.
+			this->dwSessionNumber = other.dwSessionNumber;
+			this->wTrackCount = other.wTrackCount;
+
+			this->psTracks = new CdiTrack[this->wTrackCount];
+			for (int i = 0; i < this->wTrackCount; i++)
+				this->psTracks[i] = CdiTrack(other.psTracks[i]);
+		}
 	};
 
 	//-----------------------------------------------------
@@ -97,6 +195,8 @@ namespace DiskJuggler
 		CString		m_sFileName;					// Cdi image file path
 		HANDLE		m_hFile;						// Image handle
 		DWORD		m_dwFileSize;					// Size of the cdi image
+
+		DWORD		m_dwCurrentLBA;					// Current offset in the input file, used for sequential reads/writes
 
 		// Descriptor information.
 		WORD		m_wSessionCount;				// Number of sessions in the image
@@ -164,5 +264,24 @@ namespace DiskJuggler
 			Returns: A DisjointCollection<CdiSession> instance.
 		*/
 		DisjointCollection<CdiSession>& GetSessionsCollection();
+
+		/*
+			Description: Opens a track handle on the specified track in the specified session.
+
+			Parameters:
+				dwSessionNumber: session number the track is located in.
+				dwTrackNumber: track number to open.
+
+			Returns: A CdiTrackHandle object is the track was successfully opened, nullptr otherwise.
+		*/
+		CdiTrackHandle *OpenTrackHandle(DWORD dwSessionNumber, DWORD dwTrackNumber);
+
+		/*
+			Description: Closes an opened track handle.
+
+			Parameters:
+				pTrackHandle: the track handle to close.
+		*/
+		void CloseTrackHandle(CdiTrackHandle *pTrackHandle);
 	};
 };

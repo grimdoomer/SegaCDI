@@ -15,6 +15,7 @@
 #include "../stdafx.h"
 #include "../DiskJuggler/CdiFileHandle.h"
 #include "Bootstrap.h"
+#include "..\ISO\Iso9660.h"
 
 namespace Dreamcast
 {
@@ -24,10 +25,16 @@ namespace Dreamcast
 	class CdiImage
 	{
 	protected:
-		DiskJuggler::CdiFileHandle *m_pCdiFile;
+		DiskJuggler::CdiFileHandle *m_pCdiFile;		// CDI image file handle
 
-		// IP.BIN bootstrap.
-		Bootstrap	m_sBootstrap;
+		// Bootstrap and file system data.
+		DWORD			m_dwFsSessionNumber;			// Session number the file system data is located in
+		DWORD			m_dwFsTrackNumber;				// Track number the file system data is located in
+
+		DiskJuggler::CdiTrackHandle *m_phFsTrackHandle;	// Track handle for the file system track
+		Bootstrap		m_sBootstrap;					// IP.BIN bootstrap data handler
+
+		ISO::ISO9660	*m_pFsIsoHandle;				// ISO handle for the file system
 
 		/*
 			Description: Searches each session in the CDI file for the IP.BIN bootstrap.
