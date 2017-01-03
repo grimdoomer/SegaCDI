@@ -191,7 +191,7 @@ namespace ISO
 		if (bVerbose == true)
 		{
 			// Print the file table banner.
-			printf("LBA\t\tSize\t\tName\n");
+			printf("\nLBA\t\tSize\t\tName\n");
 		}
 
 		// Seek to the root directory and parse the filesystem.
@@ -209,7 +209,7 @@ namespace ISO
 		return true;
 	}
 
-	bool ISO9660::ReadDirectoryBlock(const ISO9660_DirectoryEntry *pDirectoryEntry, const FileSystemDirectoryEntry *pParentDirectory, bool bVerbose)
+	bool ISO9660::ReadDirectoryBlock(ISO9660_DirectoryEntry *pDirectoryEntry, FileSystemDirectoryEntry *pParentDirectory, bool bVerbose)
 	{
 		// Check if this directory entry has already been cached.
 		FileSystemSectorCacheEntry *pCacheEntry = (FileSystemSectorCacheEntry*)FindCacheEntry(pDirectoryEntry->dwExtentLBA.LE);
@@ -221,6 +221,12 @@ namespace ISO
 
 		// Create a new FileSystemDirectoryEntry object for the directory entry provided.
 		FileSystemDirectoryEntry *pFsDirectoryEntry = new FileSystemDirectoryEntry(pDirectoryEntry, pParentDirectory);
+		if (bVerbose == true)
+		{
+			// Print the folder name.
+			if (pFsDirectoryEntry->IsDirectory() == true)
+				printf("%d\t\t%d\t\t%s\\..\n", pFsDirectoryEntry->GetExtentLBA(), pFsDirectoryEntry->GetExtentSize(), pFsDirectoryEntry->GetFullName());
+		}
 
 		// The directory entry has not been cached yet so add it to the directory cache.
 		if (AddToCache(pFsDirectoryEntry, &pCacheEntry) == false)
@@ -230,15 +236,18 @@ namespace ISO
 			return false;
 		}
 
-		// Add the new fs directory entry to the list.
-		this->lDirectoryEntries.push_back(*pFsDirectoryEntry);
+		// If this is a root entry then add it to our list of root directory entries.
+		if (pParentDirectory == nullptr)
+		{
+			// This is a root entry so add it to the root list.
+			this->lDirectoryEntries.push_back(pFsDirectoryEntry);
+		}
 
 		// Initialize the loop counter and interator.
 		DWORD dwRemainingData = pDirectoryEntry->dwExtentSize.LE;
 		PBYTE pbCacheData = pCacheEntry->pbSectorData;
 
 		// Loop through the directory sectors until we reach the last directory entry.
-		FileSystemDirectoryEntry *pPrevEntry = nullptr;
 		do
 		{
 			// Get the next ISO9660 directory entry from the cache data.
@@ -268,45 +277,40 @@ namespace ISO
 					break;
 			}
 
-			// Setup the fs child entry.
-			FileSystemDirectoryEntry *pEntry = new FileSystemDirectoryEntry(pDirEntry, pFsDirectoryEntry);
-
-			// Add a link in the previous entry to the one we just created.
-			if (pPrevEntry != nullptr)
-				pPrevEntry->pNextEntry = pEntry;
-			pPrevEntry = pEntry;
-
-			// Check if we should print the file information.
-			if (bVerbose == true)
+			// Check if this entry is a directory or a file.
+			if ((pDirEntry->bFileFlags & FileFlags::FileIsDirectory) != 0)
 			{
-				// Make sure that if the entry is a directory that we only print the parent directory traversal.
-				if ((pDirEntry->bFileFlags & FileFlags::FileIsDirectory) == 0 || 
-					((pDirEntry->bFileFlags & FileFlags::FileIsDirectory) != 0 && pEntry->sName == ".."))
-					printf("%d\t\t%d\t\t%s\n", pDirEntry->dwExtentLBA.LE, pDirEntry->dwExtentSize.LE, pEntry->sFullName);
-			}
-
-			// Check if this entry is a directory, and if so recursively parse it.
-			if ((pDirEntry->bFileFlags & FileFlags::FileIsDirectory) != 0 && 
-				pDirEntry->dwExtentLBA.LE != pDirectoryEntry->dwExtentLBA.LE)
-			{
-				// Recursively parse the child directory.
-				if (ReadDirectoryBlock(pDirEntry, pFsDirectoryEntry, bVerbose) == false)
+				// Make sure we don't print the entry for the "./" file entry.
+				if (pDirEntry->dwExtentLBA.LE != pDirectoryEntry->dwExtentLBA.LE)
 				{
-					// Failed to read child directory entry data.
-					return false;
+					// Recursively parse the child directory.
+					if (ReadDirectoryBlock(pDirEntry, pFsDirectoryEntry, bVerbose) == false)
+					{
+						// Failed to read child directory entry data.
+						return false;
+					}
 				}
+			}
+			else
+			{
+				// Setup the fs child entry which will automatically add it to the parent's list of children.
+				FileSystemDirectoryEntry *pEntry = new FileSystemDirectoryEntry(pDirEntry, pFsDirectoryEntry);
+
+				// Check if we should print the file information.
+				if (bVerbose == true)
+					printf("%d\t\t%d\t\t%s\n", pDirEntry->dwExtentLBA.LE, pDirEntry->dwExtentSize.LE, pEntry->GetFullName());
 			}
 
 			// Next entry.
 			dwRemainingData -= pDirEntry->bEntryLength;
 			pbCacheData += pDirEntry->bEntryLength;
-		} while (dwRemainingData > 0);/// && ((ISO9660_DirectoryEntry*)pbCacheData)->bEntryLength != 0);
+		} while (dwRemainingData > 0);
 
 		// Successfully parsed the file system for this directory entry.
 		return true;
 	}
 
-	bool ISO9660::AddToCache(const FileSystemDirectoryEntry *pDirectoryEntry, FileSystemSectorCacheEntry **ppCacheEntry)
+	bool ISO9660::AddToCache(FileSystemDirectoryEntry *pDirectoryEntry, FileSystemSectorCacheEntry **ppCacheEntry)
 	{
 		DWORD dwBytesRead = 0;
 
@@ -365,7 +369,7 @@ namespace ISO
 		}
 
 		// Add the new cache entry object to the list.
-		this->lSectorCache.push_back(*pCacheEntry);
+		this->lSectorCache.push_back(pCacheEntry);
 
 		// Successfully cached the directory data, assign the cache entry pointer and return true.
 		*ppCacheEntry = pCacheEntry;
@@ -389,12 +393,12 @@ namespace ISO
 	const FileSystemSectorCacheEntry* ISO9660::FindCacheEntry(DWORD dwLBA)
 	{
 		// Search the directory list for an entry with the target LBA.
-		for (std::list<FileSystemSectorCacheEntry>::const_iterator iter = this->lSectorCache.begin(); 
+		for (std::list<FileSystemSectorCacheEntry*>::const_iterator iter = this->lSectorCache.begin(); 
 			iter != this->lSectorCache.end(); ++iter)
 		{
 			// Check if the current cache entry has the same LBA as what we are searching for.
-			if ((*iter).dwExtentLBA == dwLBA)
-				return &(*iter);
+			if ((*iter)->dwExtentLBA == dwLBA)
+				return (*iter);
 		}
 
 		// No cache entry with the target LBA was found.

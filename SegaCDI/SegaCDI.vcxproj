@@ -104,6 +104,7 @@
     <ClInclude Include="DiskJuggler\CdiFileHandle.h" />
     <ClInclude Include="ISO\Iso9660.h" />
     <ClInclude Include="ISO\Iso9660Types.h" />
+    <ClInclude Include="Misc\DisjointCollection.h" />
     <ClInclude Include="Misc\FlatMemoryIterator.h" />
     <ClInclude Include="Dreamcast\MRImage.h" />
     <ClInclude Include="stdafx.h" />

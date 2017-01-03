@@ -80,6 +80,9 @@
     <ClInclude Include="Dreamcast\MRImage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Misc\DisjointCollection.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />

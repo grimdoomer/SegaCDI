@@ -15,6 +15,9 @@
 
 namespace ISO
 {
+	// Forward declaration for ISO9660.
+	class ISO9660;
+
 	// Starting sector for the volume descriptors.
 #define ISO9660_VOLUME_DESCRIPTORS_SECTOR		0x10
 #define ISO9660_SECTOR_SIZE						0x800
@@ -34,21 +37,25 @@ namespace ISO
 	/*
 		File system directory entry structure, used to track directory entries in the file system.
 	*/
-	struct FileSystemDirectoryEntry
+	class FileSystemDirectoryEntry
 	{
-		ISO9660_DirectoryEntry *pValue;				// Pointer to the directory entry struct.
-		FileSystemDirectoryEntry *pNextEntry;		// Pointer to the next directory entry in the same folder.
-		FileSystemDirectoryEntry *pParentEntry;		// Pointer to parent folder.
+		friend class ISO9660;
 
-		CString sName;								// Name of this directory entry
-		CString sFullName;							// Full file path of this entry
+	protected:
+		ISO9660_DirectoryEntry *pValue;							// Pointer to the directory entry struct.
+		FileSystemDirectoryEntry *pParentEntry;					// Pointer to parent folder.
+		std::list<FileSystemDirectoryEntry*> lChildEntries;		// Child directory entries.
 
-		FileSystemDirectoryEntry(const ISO9660_DirectoryEntry *pDirectoryEntry, const FileSystemDirectoryEntry *pParentDirectory = nullptr)
+		CString sName;					// Name of this directory entry
+		CString sFullName;				// Full file path of this entry
+
+	public:
+		FileSystemDirectoryEntry(ISO9660_DirectoryEntry *pDirectoryEntry, FileSystemDirectoryEntry *pParentDirectory = nullptr)
 		{
 			// Initialize fields.
-			this->pValue = (ISO9660_DirectoryEntry*)pDirectoryEntry;
-			this->pParentEntry = (FileSystemDirectoryEntry*)pParentDirectory;
-			this->pNextEntry = nullptr;
+			this->pValue = pDirectoryEntry;
+			this->pParentEntry = pParentDirectory;
+			this->lChildEntries = std::list<FileSystemDirectoryEntry*>();
 
 			// Initialize the folder/file names.
 			this->sName = CString(pDirectoryEntry->sFileIdentifier, pDirectoryEntry->bFileIdentifierLength);
@@ -65,12 +72,75 @@ namespace ISO
 				this->sName.Delete(this->sName.GetLength() - 2, 2);
 			}
 
-			// If the parent is valid then format the full file path for this entry.
+			// Check if there is a parent object for this entry, and set the parent related fields accordingly.
 			if (pParentDirectory != nullptr)
 			{
+				// Add this entry to the parent's list of children.
+				pParentDirectory->lChildEntries.push_back(this);
+
 				// Format the full file path of this directory entry.
 				this->sFullName.Format("%s\\%s", this->pParentEntry->sFullName, this->sName);
 			}
+		}
+
+		/*
+			Description: Gets the name of the directory entry.
+		*/
+		const CString GetName()
+		{
+			// Just return the name of the file.
+			return this->sName;
+		}
+
+		/*
+			Description: Gets the full file path of the directory entry.
+		*/
+		const CString GetFullName()
+		{
+			// Return the full name of the file.
+			return this->sFullName;
+		}
+
+		/*
+			Description: Gets a boolean indicating if this directory entry is a directory or not.
+		*/
+		bool IsDirectory()
+		{
+			// Check the file flags of the directory entry structure.
+			return (this->pValue->bFileFlags & FileFlags::FileIsDirectory) != 0;
+		}
+
+		/*
+			Description: Gets the LBA of this directory extent.
+		*/
+		DWORD GetExtentLBA()
+		{
+			// Return the LBA of this directory extent.
+			return this->pValue->dwExtentLBA.LE;
+		}
+
+		DWORD GetExtentSize()
+		{
+			// Return the size of this directory extent.
+			return this->pValue->dwExtentSize.LE;
+		}
+
+		/*
+			Description: Gets a list of child entries nested within this directory entry.
+		*/
+		const std::list<FileSystemDirectoryEntry*> GetChildren()
+		{
+			// Get the list of child entries.
+			return this->lChildEntries;
+		}
+
+		/*
+			Description: Gets the parent of this directory entry.
+		*/
+		const FileSystemDirectoryEntry* GetParent()
+		{
+			// Return the parent directory entry.
+			return this->pParentEntry;
 		}
 	};
 
@@ -83,10 +153,10 @@ namespace ISO
 		DWORD							m_dwFileSize;		// Size of the ISO file.
 		DWORD							m_dwLBA;			// LBA of the ISO.
 
-		std::list<FileSystemSectorCacheEntry>	lSectorCache;		// List of cached directory sectors.
-		std::list<FileSystemDirectoryEntry>		lDirectoryEntries;	// List of root directory entries
+		std::list<FileSystemSectorCacheEntry*>		lSectorCache;		// List of cached directory sectors.
+		std::list<FileSystemDirectoryEntry*>		lDirectoryEntries;	// List of root directory entries
 
-		bool ReadDirectoryBlock(const ISO9660_DirectoryEntry *pDirectoryEntry, const FileSystemDirectoryEntry *pParentDirectory, bool bVerbose);
+		bool ReadDirectoryBlock(ISO9660_DirectoryEntry *pDirectoryEntry, FileSystemDirectoryEntry *pParentDirectory, bool bVerbose);
 
 		/*
 			Description: Creates a new FileSystemSectorCacheEntry object using the directory entry directoryEntry
@@ -100,7 +170,7 @@ namespace ISO
 
 			Returns: True if the cache operation is successful, false otherwise.
 		*/
-		bool AddToCache(const FileSystemDirectoryEntry *pDirectoryEntry, FileSystemSectorCacheEntry **ppCacheEntry);
+		bool AddToCache(FileSystemDirectoryEntry *pDirectoryEntry, FileSystemSectorCacheEntry **ppCacheEntry);
 
 		const FileSystemSectorCacheEntry* FindCacheEntry(DWORD dwLBA);
 

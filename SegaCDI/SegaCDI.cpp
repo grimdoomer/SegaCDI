@@ -21,8 +21,9 @@ void printUse()
 	// File extract options
 	printf("\t-e <files>\t\textract files to output folder\n");
 	printf("\t\ta\tdump all files\n");
-	printf("\t\ti\tIP.BIN\n");
+	printf("\t\tb\tIP.BIN\n");
 	printf("\t\tl\tboot image\n");
+	printf("\t\tfs\tISO file system\n");
 }
 
 bool getCmdArg(int argc, CHAR* argv[], LPCSTR psCmd)
@@ -117,11 +118,11 @@ bool extractFilesFropImage(Dreamcast::CdiImage *pImage, CString sOutputFolder, C
 	if (sDumpParam == "a")
 	{
 		// Change the dump param to we dump everything.
-		sDumpParam = "il";
+		sDumpParam = "blfs";
 	}
 
 	// Check if we should dump the IP.BIN file.
-	if (sDumpParam.Find("i") > -1)
+	if (sDumpParam.Find("b") > -1)
 	{
 		// Dump the bootstrap file.
 		if (pImage->ExtractIPBin(sOutputFolder) == false)
@@ -133,6 +134,28 @@ bool extractFilesFropImage(Dreamcast::CdiImage *pImage, CString sOutputFolder, C
 	{
 		// Dump the boot logo.
 		if (pImage->ExtractMRImage(sOutputFolder) == false)
+			return false;
+	}
+
+	// Check if we should extract the ISO file system.
+	if (sDumpParam.Find("fs") > -1)
+	{
+		// Create a folder for the iso file system.
+		CString sFsFolder = sOutputFolder + "\\FileSystem";
+		if (CreateDirectory(sFsFolder, NULL) == 0)
+		{
+			// Failed to create the directory, find out why.
+			DWORD dwError = GetLastError();
+			if (dwError == ERROR_PATH_NOT_FOUND)
+			{
+				// We couldn't find the full path.
+				printf("error creating folder '%s'!\n", sFsFolder);
+				return false;
+			}
+		}
+
+		// Extract the ISO file system.
+		if (pImage->ExtractISOFileSystem(sFsFolder) == false)
 			return false;
 	}
 
@@ -157,8 +180,8 @@ int main(int argc, CHAR* argv[])
 		{
 			argv[0],
 			//"X:\\Dreamcast\\Games\\Toy Commander\\Toy Commander.cdi"		// Mode2/Mode2
-			//"G:\\Dreamcast\\Games\\Crazy Taxi 2\\Crazy Taxi 2.cdi",		// Audio/Mode2
-			"G:\\Dreamcast\\Games\\Crazy Taxi 2\\Crazy Taxi 2 Data-Data.cdi",		// Mode2/Mode2
+			"G:\\Dreamcast\\Games\\Crazy Taxi 2\\Crazy Taxi 2.cdi",		// Audio/Mode2
+			//"G:\\Dreamcast\\Games\\Crazy Taxi 2\\Crazy Taxi 2 Data-Data.cdi",		// Mode2/Mode2
 			//"X:\\Dreamcast\\Games\\Zombie Revenge\\Zombie Revenge.cdi"		// Mode2/Mode2
 			//"X:\\Dreamcast\\Games\\Soul Calibur\\Soul Calibur\\scalibur\\scalibur.cdi",
 			//"G:\\Dreamcast\\Games\\Quake III Arena\\Quake III Arena.cdi",

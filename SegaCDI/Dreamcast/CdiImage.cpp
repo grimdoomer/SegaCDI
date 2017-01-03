@@ -345,4 +345,13 @@ namespace Dreamcast
 		// Done, return.
 		return true;
 	}
+
+	bool CdiImage::ExtractISOFileSystem(CString sOutputFolder)
+	{
+		// Check that we have a valid fs iso handle.
+		if (this->m_pFsIsoHandle == nullptr)
+			return false;
+
+		// 
+	}
 };

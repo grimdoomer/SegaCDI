@@ -67,5 +67,7 @@ namespace Dreamcast
 
 		bool ExtractIPBin(CString sOutputFolder);
 		bool ExtractMRImage(CString sOutputFolder);
+
+		bool ExtractISOFileSystem(CString sOutputFolder);
 	};
 };
