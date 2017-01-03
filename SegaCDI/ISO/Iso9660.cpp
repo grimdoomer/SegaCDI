@@ -241,21 +241,32 @@ namespace ISO
 		FileSystemDirectoryEntry *pPrevEntry = nullptr;
 		do
 		{
-			// Check if the next entry would cross a sector boundary.
-			DWORD dwRemainder = dwRemainingData % ISO9660_SECTOR_SIZE;
-			if (dwRemainder > 0 && dwRemainder < sizeof(ISO9660_DirectoryEntry))
-			{
-				// Skip to the next sector.
-				dwRemainingData -= dwRemainder;
-				pbCacheData += dwRemainder;
-			}
-
 			// Get the next ISO9660 directory entry from the cache data.
 			ISO9660_DirectoryEntry *pDirEntry = (ISO9660_DirectoryEntry*)pbCacheData;
 
-			// Check if the current directory entry is valid.
+			// Check if the current directory entry is valid or if we are on a sector boundary.
 			if (pDirEntry->bEntryLength == 0)
-				break;
+			{
+				// Check if this next entry would cross a sector boundary.
+				DWORD dwRemainder = dwRemainingData % ISO9660_SECTOR_SIZE;
+				if (dwRemainder > 0 && dwRemainder < ISO9660_DIR_ENTRY_MAX_SIZE)
+				{
+					// Skip to the next sector.
+					dwRemainingData -= dwRemainder;
+					pbCacheData += dwRemainder;
+
+					// Check to see if there is any remaining data left to be parsed.
+					if (dwRemainingData <= 0)
+						break;
+
+					// Update the entry pointer.
+					pDirEntry = (ISO9660_DirectoryEntry*)pbCacheData;
+				}
+
+				// Double check we now have a valid entry to work with.
+				if (pDirEntry->bEntryLength == 0)
+					break;
+			}
 
 			// Setup the fs child entry.
 			FileSystemDirectoryEntry *pEntry = new FileSystemDirectoryEntry(pDirEntry, pFsDirectoryEntry);
@@ -289,7 +300,7 @@ namespace ISO
 			// Next entry.
 			dwRemainingData -= pDirEntry->bEntryLength;
 			pbCacheData += pDirEntry->bEntryLength;
-		} while (dwRemainingData > 0 && ((ISO9660_DirectoryEntry*)pbCacheData)->bEntryLength != 0);
+		} while (dwRemainingData > 0);/// && ((ISO9660_DirectoryEntry*)pbCacheData)->bEntryLength != 0);
 
 		// Successfully parsed the file system for this directory entry.
 		return true;

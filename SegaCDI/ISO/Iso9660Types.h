@@ -91,10 +91,11 @@ namespace ISO
 		FileIsSpanning = 0x80
 	};
 
+#define ISO9660_DIR_ENTRY_MAX_SIZE 255
 #pragma pack(1)
 	struct ISO9660_DirectoryEntry
 	{
-		/* 0x00 */ char bEntryLength;
+		/* 0x00 */ unsigned char bEntryLength;
 		/* 0x01 */ char bExtendedAttributeLength;
 		/* 0x02 */ LSBMSB_Int32 dwExtentLBA;
 		/* 0x0A */ LSBMSB_Int32 dwExtentSize;
@@ -111,7 +112,7 @@ namespace ISO
 	//-----------------------------------------------------
 	// Volume Descriptor Types
 	//-----------------------------------------------------
-	enum VolumeDescriptorTypes : char
+	enum VolumeDescriptorTypes : unsigned char
 	{
 		BootRecord = 0,
 		PrimaryVolumeDescriptor = 1,
@@ -125,7 +126,7 @@ namespace ISO
 	{
 		VolumeDescriptorTypes bType;
 		char sIdentifier[5];
-		char bVersion;
+		unsigned char bVersion;
 		char bData[2041];
 	};
 
@@ -161,7 +162,7 @@ namespace ISO
 		ISO_datetime1 dtVolumeModificationDateTime;
 		ISO_datetime1 dtVolumeExpirationDateTime;
 		ISO_datetime1 dtVolumeEffectiveDateTime;
-		char bFileStructureVersion;
+		unsigned char bFileStructureVersion;
 		char bUnused4;
 		char bApplicationUsed[512];
 		char bReserved[653];

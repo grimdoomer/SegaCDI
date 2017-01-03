@@ -158,9 +158,10 @@ int main(int argc, CHAR* argv[])
 			argv[0],
 			//"X:\\Dreamcast\\Games\\Toy Commander\\Toy Commander.cdi"		// Mode2/Mode2
 			//"G:\\Dreamcast\\Games\\Crazy Taxi 2\\Crazy Taxi 2.cdi",		// Audio/Mode2
+			"G:\\Dreamcast\\Games\\Crazy Taxi 2\\Crazy Taxi 2 Data-Data.cdi",		// Mode2/Mode2
 			//"X:\\Dreamcast\\Games\\Zombie Revenge\\Zombie Revenge.cdi"		// Mode2/Mode2
 			//"X:\\Dreamcast\\Games\\Soul Calibur\\Soul Calibur\\scalibur\\scalibur.cdi",
-			"G:\\Dreamcast\\Games\\Quake III Arena\\Quake III Arena.cdi",
+			//"G:\\Dreamcast\\Games\\Quake III Arena\\Quake III Arena.cdi",
 			//"Y:\\DEVELOPMENT\\Dreamcast\\Games\\Zombie Revenge\\Zombie Revenge.cdi",
 			//"G:\\Dreamcast\\Games\\GameShark_CDX\\GameShark CDX\\e-gscdx.cdi",
 
